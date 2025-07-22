@@ -288,8 +288,10 @@ export default function Home() {
             newOverlay.y = newY;
             console.log('Dragging', { newX, newY });
           } else if (dragState.current!.type === 'resize') {
-            const dx = ((e.clientX - dragState.current!.startX) / rect.width) * 100;
-            const dy = ((e.clientY - dragState.current!.startY) / rect.height) * 100;
+            const deltaXPx = e.clientX - dragState.current!.startX;
+            const deltaYPx = e.clientY - dragState.current!.startY;
+            const dx = Math.round((deltaXPx / rect.width) * 100 * 2) / 2; // round to 0.5%
+            const dy = Math.round((deltaYPx / rect.height) * 100 * 2) / 2; // round to 0.5%
             console.log('Resize handle:', dragState.current!.handle); // Debug log
             switch (dragState.current!.handle) {
               case 'tl':
