@@ -29,6 +29,8 @@ interface EditorControlsProps {
   onClearImageOverlay: () => void;
   timelineZoom: number;
   onTimelineZoomChange: (v: number) => void;
+  onTextOverlayInputChange: (v: string) => void;
+  onSetTextOverlayClick: () => void;
 }
 
 const EditorControls: React.FC<EditorControlsProps> = ({
@@ -60,6 +62,8 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   onClearImageOverlay,
   timelineZoom,
   onTimelineZoomChange,
+  onTextOverlayInputChange,
+  onSetTextOverlayClick,
 }) => {
   return (
     <div className="flex flex-wrap gap-4 items-center justify-center p-4 border border-gray-300 bg-white rounded-lg shadow mb-4" style={{color: '#222'}}>
@@ -139,8 +143,14 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       {/* Text Overlay */}
       <div className="flex items-center gap-2">
         <label className="font-semibold">Text Overlay:</label>
-        <input type="text" value={textOverlay} onChange={e => onSetTextOverlay(e.target.value)} placeholder="Enter text" className="p-2 border rounded w-40 bg-white text-gray-900" />
-        <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={() => onSetTextOverlay(textOverlay)}>Set Text</button>
+        <input
+          type="text"
+          value={textOverlay}
+          onChange={e => onTextOverlayInputChange(e.target.value)}
+          placeholder="Enter text"
+          className="p-2 border rounded w-40 bg-white text-gray-900"
+        />
+        <button className="button button-secondary" onClick={onSetTextOverlayClick}>Set Text</button>
         <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={onClearTextOverlay}>Clear Text</button>
       </div>
       {/* Image Overlay */}

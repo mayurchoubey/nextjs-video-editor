@@ -31,6 +31,15 @@ export default function Home() {
     origX: number;
     origY: number;
   }>(null);
+  // Add state for dragging text overlays
+  const [draggedTextOverlay, setDraggedTextOverlay] = useState<null | {
+    overlayId: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  }>(null);
+  const [textInputValue, setTextInputValue] = useState('');
 
   // Add video(s)
   const handleAddVideo = (files: FileList) => {
@@ -410,6 +419,53 @@ export default function Home() {
     };
   }, [draggedImageOverlay, activeClipIndex]);
 
+  // Drag start for text overlay
+  const handleTextOverlayMouseDown = (overlayId: string, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!currentClip) return;
+    const overlay = currentClip.textOverlays.find(o => o.id === overlayId);
+    if (!overlay) return;
+    setDraggedTextOverlay({
+      overlayId,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: overlay.x,
+      origY: overlay.y,
+    });
+    setSelectedOverlay({ type: 'text', id: overlayId });
+    document.body.style.userSelect = 'none';
+  };
+
+  React.useEffect(() => {
+    if (!draggedTextOverlay) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      setVideoClips(clips => clips.map((c, i) => {
+        if (i !== activeClipIndex) return c;
+        const idx = c.textOverlays.findIndex(o => o.id === draggedTextOverlay.overlayId);
+        if (idx === -1) return c;
+        const container = document.querySelector('.video-preview-draggable-area') as HTMLElement;
+        if (!container) return c;
+        const rect = container.getBoundingClientRect();
+        let newX = draggedTextOverlay.origX + ((e.clientX - draggedTextOverlay.startX) / rect.width) * 100;
+        let newY = draggedTextOverlay.origY + ((e.clientY - draggedTextOverlay.startY) / rect.height) * 100;
+        newX = Math.max(0, Math.min(100 - c.textOverlays[idx].width, newX));
+        newY = Math.max(0, Math.min(100 - c.textOverlays[idx].height, newY));
+        const newOverlays = [...c.textOverlays];
+        newOverlays[idx] = { ...newOverlays[idx], x: newX, y: newY };
+        return { ...c, textOverlays: newOverlays };
+      }));
+    };
+    const handleMouseUp = () => {
+      setDraggedTextOverlay(null);
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedTextOverlay, activeClipIndex]);
+
   return (
     <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
       <div className="w-full max-w-6xl bg-white rounded-xl shadow-lg p-8 mt-8">
@@ -438,7 +494,12 @@ export default function Home() {
           transition={transition}
           onSetTextOverlay={handleSetTextOverlay}
           onClearTextOverlay={handleClearTextOverlay}
-          textOverlay={''}
+          textOverlay={textInputValue}
+          onTextOverlayInputChange={setTextInputValue}
+          onSetTextOverlayClick={() => {
+            handleSetTextOverlay(textInputValue);
+            setTextInputValue('');
+          }}
           onSetImageOverlay={handleSetImageOverlay}
           onClearImageOverlay={handleClearImageOverlay}
           timelineZoom={timelineZoom}
@@ -456,26 +517,60 @@ export default function Home() {
             onTimeUpdate={handleVideoTimeUpdate}
           >
             <div className="video-preview-draggable-area absolute inset-0 w-full h-full z-10">
+              {/* Text overlays */}
               {visibleTextOverlays.map(overlay => (
                 <div
                   key={overlay.id}
-                  className={`absolute bg-black bg-opacity-40 text-white text-2xl font-bold rounded px-4 py-2 cursor-move ${selectedOverlay?.id === overlay.id && selectedOverlay.type === 'text' ? 'ring-2 ring-yellow-400 z-20' : 'z-10'}`}
+                  className={`absolute cursor-move ${selectedOverlay?.id === overlay.id && selectedOverlay.type === 'text' ? 'z-20' : 'z-10'}`}
                   style={{
                     left: `${overlay.x}%`,
                     top: `${overlay.y}%`,
                     width: `${overlay.width}%`,
                     height: `${overlay.height}%`,
                     userSelect: 'none',
+                    overflow: selectedOverlay?.id === overlay.id && selectedOverlay.type === 'text' ? 'visible' : 'hidden',
+                    border: selectedOverlay?.id === overlay.id && selectedOverlay.type === 'text' ? '2px dashed rgba(255,255,255,0.5)' : 'none',
+                    background: 'rgba(0,0,0,0.0)',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '2.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+                    borderRadius: '8px',
                   }}
-                  onMouseDown={e => handleOverlayMouseDown('text', overlay.id, e)}
+                  onMouseDown={e => handleTextOverlayMouseDown(overlay.id, e)}
                 >
                   {overlay.text}
                   {selectedOverlay?.id === overlay.id && selectedOverlay.type === 'text' && (
                     <>
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ left: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'tl', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ right: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'tr', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ left: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'bl', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ right: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'br', e)} />
+                      {/* Corners */}
+                      <div className="absolute" style={{ left: 0, top: 0, transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'tl', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nwse-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, top: 0, transform: 'translate(50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'tr', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nesw-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: 0, bottom: 0, transform: 'translate(-50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'bl', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nesw-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, bottom: 0, transform: 'translate(50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'br', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nwse-resize' }} />
+                      </div>
+                      {/* Sides */}
+                      <div className="absolute" style={{ left: '50%', top: 0, transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 't', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ns-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, top: '50%', transform: 'translate(50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'r', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ew-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: '50%', bottom: 0, transform: 'translate(-50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'b', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ns-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: 0, top: '50%', transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('text', overlay.id, 'l', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ew-resize' }} />
+                      </div>
                     </>
                   )}
                 </div>
