@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface VideoPlayerProps {
   src?: string;
@@ -8,8 +8,10 @@ interface VideoPlayerProps {
   saturation?: number;
   playbackRate?: number;
   volume?: number;
+  isPlaying?: boolean;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
+  onPlayPause?: () => void;
   children?: React.ReactNode; // For overlays
 }
 
@@ -21,18 +23,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   saturation = 100,
   playbackRate = 1,
   volume = 1,
+  isPlaying = false,
   onLoadedMetadata,
   onTimeUpdate,
+  onPlayPause,
   children,
 }) => {
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (videoRef.current) {
       videoRef.current.playbackRate = playbackRate;
       videoRef.current.volume = volume;
     }
   }, [playbackRate, volume]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.play().then(() => {
+        console.log('Video play() called');
+      }).catch(err => {
+        console.error('Video play() failed:', err);
+      });
+    } else {
+      videoRef.current.pause();
+      console.log('Video pause() called');
+    }
+  }, [isPlaying, src]);
 
   const handleLoadedMetadata = () => {
     if (videoRef.current && onLoadedMetadata) {
@@ -53,6 +71,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
+        muted
         controls
         className="w-full h-full object-contain"
         style={{ filter: filterString }}

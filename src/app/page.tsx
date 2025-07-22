@@ -143,7 +143,12 @@ export default function Home() {
   };
 
   // Play/pause logic
-  const handlePlayPause = () => setIsPlaying(p => !p);
+  const handlePlayPause = () => {
+    setIsPlaying(p => {
+      console.log('Play/Pause button clicked. New isPlaying:', !p);
+      return !p;
+    });
+  };
 
   // Video player source: show current clip
   let currentClip: VideoClip | undefined = undefined;
@@ -514,6 +519,7 @@ export default function Home() {
             saturation={saturation}
             playbackRate={speed}
             volume={volume}
+            isPlaying={isPlaying}
             onTimeUpdate={handleVideoTimeUpdate}
           >
             <div className="video-preview-draggable-area absolute inset-0 w-full h-full z-10">

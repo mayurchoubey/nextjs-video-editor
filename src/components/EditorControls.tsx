@@ -73,7 +73,11 @@ const EditorControls: React.FC<EditorControlsProps> = ({
         <input type="file" accept="video/*" multiple className="hidden" onChange={e => e.target.files && onAddVideo(e.target.files)} />
       </label>
       {/* Play/Pause */}
-      <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={onPlayPause}>
+      <button
+        className="button button-primary bg-indigo-600 text-white hover:bg-indigo-700"
+        onClick={onPlayPause}
+        style={{ minWidth: 80 }}
+      >
         {isPlaying ? 'Pause' : 'Play'}
       </button>
       {/* Split */}
