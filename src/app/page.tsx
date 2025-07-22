@@ -290,6 +290,7 @@ export default function Home() {
           } else if (dragState.current!.type === 'resize') {
             const dx = ((e.clientX - dragState.current!.startX) / rect.width) * 100;
             const dy = ((e.clientY - dragState.current!.startY) / rect.height) * 100;
+            console.log('Resize handle:', dragState.current!.handle); // Debug log
             switch (dragState.current!.handle) {
               case 'tl':
                 newOverlay.x += dx;
@@ -310,6 +311,20 @@ export default function Home() {
               case 'br':
                 newOverlay.width += dx;
                 newOverlay.height += dy;
+                break;
+              case 't': // top side
+                newOverlay.y += dy;
+                newOverlay.height -= dy;
+                break;
+              case 'r': // right side
+                newOverlay.width += dx;
+                break;
+              case 'b': // bottom side
+                newOverlay.height += dy;
+                break;
+              case 'l': // left side
+                newOverlay.x += dx;
+                newOverlay.width -= dx;
                 break;
             }
             newOverlay.width = Math.max(5, Math.min(100 - newOverlay.x, newOverlay.width));
@@ -484,10 +499,16 @@ export default function Home() {
                   />
                   {selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' && (
                     <>
+                      {/* Corners */}
                       <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ left: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tl', e)} />
                       <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ right: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tr', e)} />
                       <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ left: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'bl', e)} />
                       <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ right: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'br', e)} />
+                      {/* Sides */}
+                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ns-resize" style={{ left: '50%', top: -6, transform: 'translateX(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 't', e)} />
+                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ew-resize" style={{ right: -6, top: '50%', transform: 'translateY(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'r', e)} />
+                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ns-resize" style={{ left: '50%', bottom: -6, transform: 'translateX(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'b', e)} />
+                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ew-resize" style={{ left: -6, top: '50%', transform: 'translateY(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'l', e)} />
                     </>
                   )}
                 </div>
