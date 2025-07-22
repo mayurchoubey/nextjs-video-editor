@@ -1,103 +1,228 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useRef } from 'react';
+import VideoPlayer from '../components/VideoPlayer';
+import EditorControls from '../components/EditorControls';
+import Timeline, { VideoClip } from '../components/Timeline';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  // State for video clips and timeline
+  const [videoClips, setVideoClips] = useState<VideoClip[]>([]);
+  const [activeClipIndex, setActiveClipIndex] = useState<number>(-1);
+  const [playheadTime, setPlayheadTime] = useState(0);
+  const [timelineZoom, setTimelineZoom] = useState(1);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // State for effects and overlays (per-clip, but for now, global for MVP)
+  const [filter, setFilter] = useState('none');
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [saturation, setSaturation] = useState(100);
+  const [volume, setVolume] = useState(1);
+  const [speed, setSpeed] = useState(1);
+  const [transition, setTransition] = useState('none');
+  const [textOverlay, setTextOverlay] = useState('');
+  const [imageOverlay, setImageOverlay] = useState<string | undefined>(undefined);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Add video(s)
+  const handleAddVideo = (files: FileList) => {
+    const newClips: VideoClip[] = [];
+    Array.from(files).forEach(file => {
+      const url = URL.createObjectURL(file);
+      // We'll get duration from metadata later
+      const tempVideo = document.createElement('video');
+      tempVideo.onloadedmetadata = () => {
+        newClips.push({
+          id: uuidv4(),
+          name: file.name,
+          url,
+          duration: tempVideo.duration,
+          trimStart: 0,
+          trimEnd: tempVideo.duration,
+        });
+        if (newClips.length === files.length) {
+          setVideoClips(prev => [...prev, ...newClips]);
+          setActiveClipIndex(videoClips.length + newClips.length - 1);
+        }
+      };
+      tempVideo.src = url;
+    });
+  };
+
+  // Remove selected clip
+  const handleRemove = () => {
+    if (activeClipIndex === -1) return;
+    setVideoClips(clips => {
+      const newClips = [...clips];
+      newClips.splice(activeClipIndex, 1);
+      return newClips;
+    });
+    setActiveClipIndex(idx => {
+      if (videoClips.length <= 1) return -1;
+      return Math.max(0, idx - 1);
+    });
+  };
+
+  // Reorder clips
+  const handleReorderClips = (newOrder: VideoClip[]) => {
+    setVideoClips(newOrder);
+  };
+
+  // Select a clip
+  const handleSelectClip = (idx: number) => {
+    setActiveClipIndex(idx);
+    setPlayheadTime(
+      videoClips.slice(0, idx).reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0)
+    );
+  };
+
+  // Split clip at playhead
+  const handleSplit = () => {
+    if (activeClipIndex === -1) return;
+    const currentClip = videoClips[activeClipIndex];
+    const relTime = playheadTime - videoClips.slice(0, activeClipIndex).reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
+    if (relTime <= 0 || relTime >= (currentClip.trimEnd - currentClip.trimStart)) return;
+    const firstPart: VideoClip = {
+      ...currentClip,
+      id: uuidv4(),
+      trimEnd: currentClip.trimStart + relTime,
+    };
+    const secondPart: VideoClip = {
+      ...currentClip,
+      id: uuidv4(),
+      trimStart: currentClip.trimStart + relTime,
+    };
+    setVideoClips(clips => [
+      ...clips.slice(0, activeClipIndex),
+      firstPart,
+      secondPart,
+      ...clips.slice(activeClipIndex + 1),
+    ]);
+    setActiveClipIndex(activeClipIndex); // Stay on first part
+  };
+
+  // Trim clip (simple prompt for MVP)
+  const handleTrim = () => {
+    if (activeClipIndex === -1) return;
+    const currentClip = videoClips[activeClipIndex];
+    const start = parseFloat(prompt('Trim start (seconds):', currentClip.trimStart.toString()) || '0');
+    const end = parseFloat(prompt('Trim end (seconds):', currentClip.trimEnd.toString()) || currentClip.duration.toString());
+    if (isNaN(start) || isNaN(end) || start < 0 || end > currentClip.duration || start >= end) return;
+    setVideoClips(clips => clips.map((c, i) => i === activeClipIndex ? { ...c, trimStart: start, trimEnd: end } : c));
+  };
+
+  // Remove all effects (MVP: just reset global state)
+  const handleRemoveAllEffects = () => {
+    setFilter('none'); setBrightness(100); setContrast(100); setSaturation(100); setSpeed(1); setTransition('none'); setTextOverlay(''); setImageOverlay(undefined);
+  };
+
+  // Play/pause logic
+  const handlePlayPause = () => setIsPlaying(p => !p);
+
+  // Video player source: show current clip
+  let currentClip: VideoClip | undefined = undefined;
+  let currentClipOffset = 0;
+  if (activeClipIndex !== -1 && videoClips[activeClipIndex]) {
+    currentClip = videoClips[activeClipIndex];
+    currentClipOffset = videoClips.slice(0, activeClipIndex).reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
+  }
+
+  // Handler to sync playhead with video playback
+  const handleVideoTimeUpdate = (currentTime: number) => {
+    if (currentClip) {
+      setPlayheadTime(currentClipOffset + (currentTime - currentClip.trimStart));
+    }
+  };
+
+  // Overlay logic (MVP: global, not per-clip)
+  const handleSetTextOverlay = (text: string) => setTextOverlay(text);
+  const handleClearTextOverlay = () => setTextOverlay('');
+  const handleSetImageOverlay = (file: File) => setImageOverlay(URL.createObjectURL(file));
+  const handleClearImageOverlay = () => setImageOverlay(undefined);
+
+  // Timeline playhead change (for scrubbing)
+  const handlePlayheadChange = (t: number) => setPlayheadTime(t);
+
+  // When playhead moves, update active clip
+  React.useEffect(() => {
+    let acc = 0;
+    for (let i = 0; i < videoClips.length; i++) {
+      const c = videoClips[i];
+      const clipStart = acc;
+      const clipEnd = acc + (c.trimEnd - c.trimStart);
+      if (playheadTime >= clipStart && playheadTime < clipEnd) {
+        setActiveClipIndex(i);
+        break;
+      }
+      acc = clipEnd;
+    }
+  }, [playheadTime]);
+
+  return (
+    <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
+      <div className="w-full max-w-6xl bg-white rounded-xl shadow-lg p-8 mt-8">
+        <h1 className="text-3xl font-bold text-indigo-700 mb-4">Video Editor (Next.js Port)</h1>
+        <EditorControls
+          onAddVideo={handleAddVideo}
+          onPlayPause={handlePlayPause}
+          isPlaying={isPlaying}
+          onSplit={handleSplit}
+          onTrim={handleTrim}
+          onRemove={handleRemove}
+          onRemoveAllEffects={handleRemoveAllEffects}
+          onVolumeChange={setVolume}
+          volume={volume}
+          onFilterChange={setFilter}
+          filter={filter}
+          onBrightnessChange={setBrightness}
+          brightness={brightness}
+          onContrastChange={setContrast}
+          contrast={contrast}
+          onSaturationChange={setSaturation}
+          saturation={saturation}
+          onSpeedChange={setSpeed}
+          speed={speed}
+          onTransitionChange={setTransition}
+          transition={transition}
+          onSetTextOverlay={handleSetTextOverlay}
+          onClearTextOverlay={handleClearTextOverlay}
+          textOverlay={textOverlay}
+          onSetImageOverlay={handleSetImageOverlay}
+          onClearImageOverlay={handleClearImageOverlay}
+          timelineZoom={timelineZoom}
+          onTimelineZoomChange={setTimelineZoom}
+        />
+        <div className="my-8">
+          <VideoPlayer
+            src={currentClip?.url}
+            filter={filter}
+            brightness={brightness}
+            contrast={contrast}
+            saturation={saturation}
+            playbackRate={speed}
+            volume={volume}
+            onTimeUpdate={handleVideoTimeUpdate}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {/* Overlays will be rendered here in future steps */}
+            {textOverlay && (
+              <div className="absolute left-1/2 top-1/2 text-white text-2xl font-bold bg-black bg-opacity-40 px-4 py-2 rounded pointer-events-none" style={{transform: 'translate(-50%, -50%)'}}>{textOverlay}</div>
+            )}
+            {imageOverlay && (
+              <img src={imageOverlay} alt="Overlay" className="absolute left-1/2 top-1/2 max-w-[30%] max-h-[30%] rounded shadow-lg pointer-events-none" style={{transform: 'translate(-50%, -50%)'}} />
+            )}
+          </VideoPlayer>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <Timeline
+          clips={videoClips}
+          activeClipIndex={activeClipIndex}
+          onSelectClip={handleSelectClip}
+          onReorderClips={handleReorderClips}
+          playheadTime={playheadTime}
+          onPlayheadChange={handlePlayheadChange}
+          timelineZoom={timelineZoom}
+        />
+      </div>
+    </main>
   );
 }
