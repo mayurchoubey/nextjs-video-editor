@@ -1,5 +1,26 @@
 import React from 'react';
 
+export interface TextOverlay {
+  id: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+  x: number; // percent (0-100)
+  y: number; // percent (0-100)
+  width: number; // percent (0-100)
+  height: number; // percent (0-100)
+}
+export interface ImageOverlay {
+  id: string;
+  imageUrl: string;
+  startTime: number;
+  endTime: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface VideoClip {
   id: string;
   name: string;
@@ -7,6 +28,8 @@ export interface VideoClip {
   duration: number;
   trimStart: number;
   trimEnd: number;
+  textOverlays: TextOverlay[];
+  imageOverlays: ImageOverlay[];
 }
 
 interface TimelineProps {
@@ -32,12 +55,12 @@ const Timeline: React.FC<TimelineProps> = ({
   const totalDuration = clips.reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
   const pixelsPerSecond = 100 * timelineZoom;
 
-  // Drag and drop logic
-  const dragClipIdx = React.useRef<number | null>(null);
+  // Helper: get project time offset for each clip
+  const getClipOffset = (idx: number) => clips.slice(0, idx).reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
 
-  const handleDragStart = (idx: number) => {
-    dragClipIdx.current = idx;
-  };
+  // Drag and drop logic (same as before)
+  const dragClipIdx = React.useRef<number | null>(null);
+  const handleDragStart = (idx: number) => { dragClipIdx.current = idx; };
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>, idx: number) => {
     e.preventDefault();
     if (dragClipIdx.current === null || dragClipIdx.current === idx) return;
@@ -47,26 +70,48 @@ const Timeline: React.FC<TimelineProps> = ({
     onReorderClips(newOrder);
     dragClipIdx.current = idx;
   };
-  const handleDragEnd = () => {
-    dragClipIdx.current = null;
-  };
+  const handleDragEnd = () => { dragClipIdx.current = null; };
 
   // Playhead position
-  let playheadPx = 0;
-  let acc = 0;
-  for (let i = 0; i < clips.length; i++) {
-    const c = clips[i];
-    const clipStart = acc;
-    const clipEnd = acc + (c.trimEnd - c.trimStart);
-    if (playheadTime >= clipStart && playheadTime <= clipEnd) {
-      playheadPx = (playheadTime) * pixelsPerSecond;
-      break;
-    }
-    acc = clipEnd;
-  }
+  let playheadPx = playheadTime * pixelsPerSecond;
+
+  // Render overlay blocks for all overlays in all clips
+  const renderOverlayBlocks = (type: 'text' | 'image') => {
+    let blocks: React.ReactNode[] = [];
+    let acc = 0;
+    clips.forEach((clip, clipIdx) => {
+      const overlays = type === 'text' ? clip.textOverlays : clip.imageOverlays;
+      overlays.forEach(overlay => {
+        const overlayStart = acc + (overlay.startTime - clip.trimStart);
+        const overlayEnd = acc + (overlay.endTime - clip.trimStart);
+        blocks.push(
+          <div
+            key={overlay.id}
+            className={`absolute top-0 h-6 rounded ${type === 'text' ? 'bg-green-500' : 'bg-pink-500'} opacity-90 cursor-pointer`}
+            style={{
+              left: overlayStart * pixelsPerSecond,
+              width: (overlayEnd - overlayStart) * pixelsPerSecond,
+              minWidth: 16,
+            }}
+            title={type === 'text' ? (overlay as TextOverlay).text : 'Image Overlay'}
+          >
+            <span className="text-xs text-white px-1 truncate">
+              {type === 'text' ? (overlay as TextOverlay).text : 'Image'}
+            </span>
+          </div>
+        );
+      });
+      acc += (clip.trimEnd - clip.trimStart);
+    });
+    return (
+      <div className="relative w-full" style={{ height: 24, width: totalDuration * pixelsPerSecond }}>
+        {blocks}
+      </div>
+    );
+  };
 
   return (
-    <div className="timeline-section bg-gray-50 rounded-lg border p-4 overflow-x-auto relative" style={{ minHeight: 140 }}>
+    <div className="timeline-section bg-gray-50 rounded-lg border p-4 overflow-x-auto relative" style={{ minHeight: 180 }}>
       {/* Timescale */}
       <div className="flex h-8 border-b mb-2 relative" style={{ width: totalDuration * pixelsPerSecond }}>
         {Array.from({ length: Math.ceil(totalDuration) + 1 }).map((_, i) => (
@@ -98,12 +143,12 @@ const Timeline: React.FC<TimelineProps> = ({
           );
         })}
       </div>
-      {/* Overlay Tracks (empty for now) */}
+      {/* Overlay Tracks */}
       <div className="mt-4">
-        <div className="text-xs text-gray-400">Text Overlay Track (coming soon)</div>
-        <div className="h-8 bg-green-100 rounded mb-2" />
-        <div className="text-xs text-gray-400">Image Overlay Track (coming soon)</div>
-        <div className="h-8 bg-pink-100 rounded" />
+        <div className="text-xs text-gray-700 mb-1">Text Overlay Track</div>
+        {renderOverlayBlocks('text')}
+        <div className="text-xs text-gray-700 mb-1 mt-2">Image Overlay Track</div>
+        {renderOverlayBlocks('image')}
       </div>
     </div>
   );
