@@ -11,7 +11,6 @@ interface VideoPlayerProps {
   isPlaying?: boolean;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
-  onPlayPause?: () => void;
   children?: React.ReactNode; // For overlays
 }
 
@@ -26,7 +25,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   isPlaying = false,
   onLoadedMetadata,
   onTimeUpdate,
-  onPlayPause,
   children,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,14 +39,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
-      videoRef.current.play().then(() => {
-        console.log('Video play() called');
-      }).catch(err => {
-        console.error('Video play() failed:', err);
-      });
+      videoRef.current.play().catch(() => {});
     } else {
       videoRef.current.pause();
-      console.log('Video pause() called');
     }
   }, [isPlaying, src]);
 
@@ -72,7 +65,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         ref={videoRef}
         src={src}
         muted
-        controls
         className="w-full h-full object-contain"
         style={{ filter: filterString }}
         onLoadedMetadata={handleLoadedMetadata}

@@ -510,6 +510,7 @@ export default function Home() {
           timelineZoom={timelineZoom}
           onTimelineZoomChange={setTimelineZoom}
         />
+        {/* Video Preview */}
         <div className="my-8">
           <VideoPlayer
             src={currentClip?.url}
@@ -637,6 +638,30 @@ export default function Home() {
             </div>
           </VideoPlayer>
         </div>
+        {/* Playback Controls Section */}
+        <div className="flex justify-center items-center my-4">
+          <button
+            onClick={handlePlayPause}
+            style={{
+              background: '#2563eb',
+              color: 'white',
+              borderRadius: '50%',
+              width: 56,
+              height: 56,
+              fontSize: 28,
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              opacity: 0.9,
+              cursor: 'pointer',
+              outline: 'none',
+              margin: '0 8px',
+            }}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? '❚❚' : '►'}
+          </button>
+        </div>
+        {/* Timeline Section */}
         <Timeline
           clips={videoClips}
           activeClipIndex={activeClipIndex}

@@ -72,14 +72,6 @@ const EditorControls: React.FC<EditorControlsProps> = ({
         <span className="button button-primary bg-indigo-600 text-white hover:bg-indigo-700">Add Video</span>
         <input type="file" accept="video/*" multiple className="hidden" onChange={e => e.target.files && onAddVideo(e.target.files)} />
       </label>
-      {/* Play/Pause */}
-      <button
-        className="button button-primary bg-indigo-600 text-white hover:bg-indigo-700"
-        onClick={onPlayPause}
-        style={{ minWidth: 80 }}
-      >
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
       {/* Split */}
       <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={onSplit}>Split Clip</button>
       {/* Trim */}
@@ -88,11 +80,6 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={onRemove}>Remove Selected</button>
       {/* Remove All Effects */}
       <button className="button button-secondary bg-gray-200 text-gray-900 hover:bg-gray-300" onClick={onRemoveAllEffects}>Remove All Effects</button>
-      {/* Volume */}
-      <div className="flex items-center gap-2">
-        <label className="font-semibold">Volume:</label>
-        <input type="range" min={0} max={1} step={0.01} value={volume} onChange={e => onVolumeChange(Number(e.target.value))} className="w-24 accent-indigo-600" />
-      </div>
       {/* Filter */}
       <div className="flex items-center gap-2">
         <label className="font-semibold">Filter:</label>
