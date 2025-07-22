@@ -288,10 +288,11 @@ export default function Home() {
             newOverlay.y = newY;
             console.log('Dragging', { newX, newY });
           } else if (dragState.current!.type === 'resize') {
-            const deltaXPx = e.clientX - dragState.current!.startX;
-            const deltaYPx = e.clientY - dragState.current!.startY;
-            const dx = Math.round((deltaXPx / rect.width) * 100 * 2) / 2; // round to 0.5%
-            const dy = Math.round((deltaYPx / rect.height) * 100 * 2) / 2; // round to 0.5%
+            const scale = 0.25;
+            const deltaXPx = (e.clientX - dragState.current!.startX) * scale;
+            const deltaYPx = (e.clientY - dragState.current!.startY) * scale;
+            const dx = Math.round((deltaXPx / rect.width) * 100);
+            const dy = Math.round((deltaYPx / rect.height) * 100);
             console.log('Resize handle:', dragState.current!.handle); // Debug log
             switch (dragState.current!.handle) {
               case 'tl':
@@ -482,14 +483,15 @@ export default function Home() {
               {visibleImageOverlays.map(overlay => (
                 <div
                   key={overlay.id}
-                  className={`absolute rounded shadow-lg cursor-move ${selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' ? 'ring-2 ring-yellow-400 z-20' : 'z-10'}`}
+                  className={`absolute rounded shadow-lg cursor-move ${selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' ? 'z-20' : 'z-10'}`}
                   style={{
                     left: `${overlay.x}%`,
                     top: `${overlay.y}%`,
                     width: `${overlay.width}%`,
                     height: `${overlay.height}%`,
                     userSelect: 'none',
-                    overflow: 'hidden',
+                    overflow: selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' ? 'visible' : 'hidden',
+                    border: selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' ? '2px dashed rgba(255,255,255,0.5)' : 'none',
                   }}
                   onMouseDown={e => handleImageOverlayMouseDown(overlay.id, e)}
                 >
@@ -502,15 +504,31 @@ export default function Home() {
                   {selectedOverlay?.id === overlay.id && selectedOverlay.type === 'image' && (
                     <>
                       {/* Corners */}
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ left: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tl', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ right: -6, top: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tr', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nesw-resize" style={{ left: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'bl', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-nwse-resize" style={{ right: -6, bottom: -6 }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'br', e)} />
+                      <div className="absolute" style={{ left: 0, top: 0, transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tl', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nwse-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, top: 0, transform: 'translate(50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'tr', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nesw-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: 0, bottom: 0, transform: 'translate(-50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'bl', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nesw-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, bottom: 0, transform: 'translate(50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'br', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'nwse-resize' }} />
+                      </div>
                       {/* Sides */}
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ns-resize" style={{ left: '50%', top: -6, transform: 'translateX(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 't', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ew-resize" style={{ right: -6, top: '50%', transform: 'translateY(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'r', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ns-resize" style={{ left: '50%', bottom: -6, transform: 'translateX(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'b', e)} />
-                      <div className="absolute w-3 h-3 bg-yellow-400 border-2 border-white rounded-full cursor-ew-resize" style={{ left: -6, top: '50%', transform: 'translateY(-50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'l', e)} />
+                      <div className="absolute" style={{ left: '50%', top: 0, transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 't', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ns-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ right: 0, top: '50%', transform: 'translate(50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'r', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ew-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: '50%', bottom: 0, transform: 'translate(-50%, 50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'b', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ns-resize' }} />
+                      </div>
+                      <div className="absolute" style={{ left: 0, top: '50%', transform: 'translate(-50%, -50%)' }} onMouseDown={e => handleResizeHandleMouseDown('image', overlay.id, 'l', e)}>
+                        <div style={{ width: 12, height: 12, background: '#4f46e5', border: '1px solid white', borderRadius: '50%', opacity: 0.8, cursor: 'ew-resize' }} />
+                      </div>
                     </>
                   )}
                 </div>
