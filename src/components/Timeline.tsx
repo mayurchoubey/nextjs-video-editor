@@ -59,8 +59,16 @@ const Timeline: React.FC<TimelineProps> = ({
   timelineZoom,
   onOverlayTimingChange,
 }) => {
-  // Calculate total project duration
-  const totalDuration = clips.reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
+  // Calculate total project duration as max of video duration and latest overlay end time
+  const overlayMaxEnd = Math.max(
+    0,
+    ...clips.flatMap(clip => [
+      ...clip.textOverlays.map(o => o.endTime),
+      ...clip.imageOverlays.map(o => o.endTime)
+    ])
+  );
+  const videoDuration = clips.reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
+  const totalDuration = Math.max(videoDuration, overlayMaxEnd);
   const pixelsPerSecond = 100 * timelineZoom;
 
   // Helper: get project time offset for each clip

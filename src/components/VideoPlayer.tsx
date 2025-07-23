@@ -11,6 +11,7 @@ interface VideoPlayerProps {
   isPlaying?: boolean;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
+  isBlankPreview?: boolean;
   children?: React.ReactNode; // For overlays
 }
 
@@ -25,6 +26,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   isPlaying = false,
   onLoadedMetadata,
   onTimeUpdate,
+  isBlankPreview = false,
   children,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,14 +63,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div className="relative w-full h-full bg-gray-900 rounded-lg flex items-center justify-center min-h-[300px]">
-      <video
-        ref={videoRef}
-        src={src}
-        className="w-full h-full object-contain"
-        style={{ filter: filterString }}
-        onLoadedMetadata={handleLoadedMetadata}
-        onTimeUpdate={handleTimeUpdate}
-      />
+      {isBlankPreview ? (
+        <img
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
+          className="w-full h-full object-contain bg-black"
+          alt="Blank Preview"
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          src={src}
+          className="w-full h-full object-contain"
+          style={{ filter: filterString }}
+          onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      )}
       {children}
     </div>
   );

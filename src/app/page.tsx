@@ -144,10 +144,15 @@ export default function Home() {
 
   // Play/pause logic
   const handlePlayPause = () => {
-    setIsPlaying(p => {
-      console.log('Play/Pause button clicked. New isPlaying:', !p);
-      return !p;
-    });
+    if (isPlaying) {
+      setIsPlaying(false);
+    } else {
+      // If playhead is at or beyond the end, reset to 0
+      if (playheadTime >= totalTimelineDuration) {
+        setPlayheadTime(0);
+      }
+      setIsPlaying(true);
+    }
   };
 
   // Video player source: show current clip
@@ -471,6 +476,39 @@ export default function Home() {
     };
   }, [draggedTextOverlay, activeClipIndex]);
 
+  // Calculate total timeline duration (max of video and overlays)
+  const overlayMaxEnd = Math.max(
+    0,
+    ...videoClips.flatMap(clip => [
+      ...clip.textOverlays.map(o => o.endTime),
+      ...clip.imageOverlays.map(o => o.endTime)
+    ])
+  );
+  const videoDuration = videoClips.reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
+  const totalTimelineDuration = Math.max(videoDuration, overlayMaxEnd);
+
+  // When playing, advance playhead up to totalTimelineDuration
+  React.useEffect(() => {
+    if (!isPlaying) return;
+    let raf: number;
+    const tick = () => {
+      setPlayheadTime(prev => {
+        const next = prev + 1 / 60; // ~60fps
+        if (next >= totalTimelineDuration) {
+          setIsPlaying(false);
+          return totalTimelineDuration;
+        }
+        return next;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isPlaying, totalTimelineDuration]);
+
+  // In VideoPlayer, pass a prop to indicate if we are in the "blank" area
+  const isBlankPreview = playheadTime > videoDuration;
+
   return (
     <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
       <div className="w-full max-w-6xl bg-white rounded-xl shadow-lg p-8 mt-8">
@@ -513,15 +551,16 @@ export default function Home() {
         {/* Video Preview */}
         <div className="my-8">
           <VideoPlayer
-            src={currentClip?.url}
+            src={isBlankPreview ? undefined : currentClip?.url}
             filter={filter}
             brightness={brightness}
             contrast={contrast}
             saturation={saturation}
             playbackRate={speed}
             volume={volume}
-            isPlaying={isPlaying}
+            isPlaying={isPlaying && !isBlankPreview}
             onTimeUpdate={handleVideoTimeUpdate}
+            isBlankPreview={isBlankPreview}
           >
             <div className="video-preview-draggable-area absolute inset-0 w-full h-full z-10">
               {/* Text overlays */}
