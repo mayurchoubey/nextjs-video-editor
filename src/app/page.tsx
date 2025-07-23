@@ -639,7 +639,7 @@ export default function Home() {
           </VideoPlayer>
         </div>
         {/* Playback Controls Section */}
-        <div className="flex justify-center items-center my-4">
+        <div className="flex justify-center items-center my-4 gap-6">
           <button
             onClick={handlePlayPause}
             style={{
@@ -660,6 +660,21 @@ export default function Home() {
           >
             {isPlaying ? '❚❚' : '►'}
           </button>
+          <div className="flex items-center gap-2">
+            <label className="font-semibold" htmlFor="volume-slider">Volume:</label>
+            <input
+              id="volume-slider"
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={e => setVolume(Number(e.target.value))}
+              className="w-32 accent-indigo-600"
+              style={{ verticalAlign: 'middle' }}
+            />
+            <span className="font-mono">{Math.round(volume * 100)}%</span>
+          </div>
         </div>
         {/* Timeline Section */}
         <Timeline

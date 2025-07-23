@@ -64,7 +64,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
-        muted
         className="w-full h-full object-contain"
         style={{ filter: filterString }}
         onLoadedMetadata={handleLoadedMetadata}
