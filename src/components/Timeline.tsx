@@ -40,6 +40,13 @@ interface TimelineProps {
   playheadTime: number;
   onPlayheadChange: (t: number) => void;
   timelineZoom: number;
+  onOverlayTimingChange?: (
+    type: 'text' | 'image',
+    clipIdx: number,
+    overlayId: string,
+    newStart: number,
+    newEnd: number
+  ) => void;
 }
 
 const Timeline: React.FC<TimelineProps> = ({
@@ -50,6 +57,7 @@ const Timeline: React.FC<TimelineProps> = ({
   playheadTime,
   onPlayheadChange,
   timelineZoom,
+  onOverlayTimingChange,
 }) => {
   // Calculate total project duration
   const totalDuration = clips.reduce((sum, c) => sum + (c.trimEnd - c.trimStart), 0);
@@ -81,23 +89,81 @@ const Timeline: React.FC<TimelineProps> = ({
     let acc = 0;
     clips.forEach((clip, clipIdx) => {
       const overlays = type === 'text' ? clip.textOverlays : clip.imageOverlays;
-      overlays.forEach(overlay => {
+      overlays.forEach((overlay, overlayIdx) => {
         const overlayStart = acc + (overlay.startTime - clip.trimStart);
         const overlayEnd = acc + (overlay.endTime - clip.trimStart);
+        const blockLeft = overlayStart * pixelsPerSecond;
+        const blockWidth = (overlayEnd - overlayStart) * pixelsPerSecond;
+        // Drag/resize state
+        let isDragging = false;
+        let dragType: 'move' | 'left' | 'right' | null = null;
+        let dragStartX = 0;
+        let origStart = 0;
+        let origEnd = 0;
+        // Handlers
+        const onMouseDown = (e: React.MouseEvent, which: 'move' | 'left' | 'right') => {
+          e.stopPropagation();
+          isDragging = true;
+          dragType = which;
+          dragStartX = e.clientX;
+          origStart = overlay.startTime;
+          origEnd = overlay.endTime;
+          const onMouseMove = (ev: MouseEvent) => {
+            if (!isDragging) return;
+            const deltaPx = ev.clientX - dragStartX;
+            const deltaSec = deltaPx / pixelsPerSecond;
+            let newStart = origStart;
+            let newEnd = origEnd;
+            if (dragType === 'move') {
+              newStart = Math.max(clip.trimStart, origStart + deltaSec);
+              newEnd = Math.min(clip.trimEnd, origEnd + deltaSec);
+              if (newEnd - newStart < 0.1) newEnd = newStart + 0.1;
+            } else if (dragType === 'left') {
+              newStart = Math.max(clip.trimStart, Math.min(origStart + deltaSec, origEnd - 0.1));
+            } else if (dragType === 'right') {
+              newEnd = Math.min(clip.trimEnd, Math.max(origEnd + deltaSec, origStart + 0.1));
+            }
+            if (onOverlayTimingChange) {
+              onOverlayTimingChange(type, clipIdx, overlay.id, newStart, newEnd);
+            }
+          };
+          const onMouseUp = () => {
+            isDragging = false;
+            dragType = null;
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          };
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        };
         blocks.push(
           <div
             key={overlay.id}
-            className={`absolute top-0 h-6 rounded ${type === 'text' ? 'bg-green-500' : 'bg-pink-500'} opacity-90 cursor-pointer`}
+            className={`absolute top-0 h-6 rounded ${type === 'text' ? 'bg-green-500' : 'bg-pink-500'} opacity-90 cursor-pointer flex items-center`}
             style={{
-              left: overlayStart * pixelsPerSecond,
-              width: (overlayEnd - overlayStart) * pixelsPerSecond,
+              left: blockLeft,
+              width: blockWidth,
               minWidth: 16,
+              zIndex: 2,
             }}
-            title={type === 'text' ? (overlay as TextOverlay).text : 'Image Overlay'}
+            onMouseDown={e => onMouseDown(e, 'move')}
           >
-            <span className="text-xs text-white px-1 truncate">
-              {type === 'text' ? (overlay as TextOverlay).text : 'Image'}
+            {/* Left resize handle */}
+            <div
+              className="w-2 h-6 bg-white opacity-80 cursor-ew-resize absolute left-0 top-0 z-10"
+              onMouseDown={e => onMouseDown(e, 'left')}
+              style={{ borderRadius: '2px 0 0 2px' }}
+            />
+            {/* Overlay label */}
+            <span className="text-xs text-white px-2 truncate mx-auto" style={{ pointerEvents: 'none' }}>
+              {type === 'text' ? (overlay as any).text : 'Image'}
             </span>
+            {/* Right resize handle */}
+            <div
+              className="w-2 h-6 bg-white opacity-80 cursor-ew-resize absolute right-0 top-0 z-10"
+              onMouseDown={e => onMouseDown(e, 'right')}
+              style={{ borderRadius: '0 2px 2px 0' }}
+            />
           </div>
         );
       });

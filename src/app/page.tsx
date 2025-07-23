@@ -685,6 +685,22 @@ export default function Home() {
           playheadTime={playheadTime}
           onPlayheadChange={handlePlayheadChange}
           timelineZoom={timelineZoom}
+          onOverlayTimingChange={(type, clipIdx, overlayId, newStart, newEnd) => {
+            setVideoClips(clips => clips.map((clip, idx) => {
+              if (idx !== clipIdx) return clip;
+              if (type === 'text') {
+                const overlays = clip.textOverlays.map(o =>
+                  o.id === overlayId ? { ...o, startTime: newStart, endTime: newEnd } : o
+                );
+                return { ...clip, textOverlays: overlays };
+              } else {
+                const overlays = clip.imageOverlays.map(o =>
+                  o.id === overlayId ? { ...o, startTime: newStart, endTime: newEnd } : o
+                );
+                return { ...clip, imageOverlays: overlays };
+              }
+            }));
+          }}
         />
       </div>
     </main>
